@@ -31,7 +31,7 @@
 
       try {
         // Envia os dados para a API de login
-        const res = await fetch('https://seu-projeto.up.railway.app/login', {  // Atualize a URL com a do seu backend
+        const res = await fetch('mysql://root:iQtgahZpQNuxJfCcCmCLcQMxfiLzyyfI@nozomi.proxy.rlwy.net:39585/railway', {  // Atualize a URL com a do seu backend
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ matricula, senha })
