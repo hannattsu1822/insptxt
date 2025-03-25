@@ -1,71 +1,74 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
+const app = express();
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const app = express();
-
-// Configuração do MySQL
+// Config do banco
 const config = {
-  uri: process.env.MYSQL_PUBLIC_URL,
+  host: process.env.MYSQL_HOST,
+  port: process.env.MYSQL_PORT,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
   ssl: { rejectUnauthorized: false }
 };
 
-// Middlewares
-app.use(cors({
-  origin: ['https://insptxt-production.up.railway.app', 'http://localhost'],
-  methods: ['GET', 'POST']
-}));
+app.use(cors());
 app.use(express.json());
 
-// 👇 Serve arquivos estáticos da pasta 'public'
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Rota GET /login - Serve o frontend
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Rota POST /login - Processa o login
+// Rota de login (mantemos a original)
 app.post('/login', async (req, res) => {
   const { matricula, senha } = req.body;
 
   if (!matricula || !senha) {
-    return res.status(400).json({ 
-      success: false,
-      message: '⚠️ Preencha todos os campos' 
-    });
+    return res.status(400).json({ message: 'Matrícula e senha são obrigatórias' });
   }
 
-  let connection;
+  let conexao;
   try {
-    connection = await mysql.createConnection(config);
-    const [rows] = await connection.execute(
-      'SELECT * FROM users WHERE matricula = ? AND senha = ? LIMIT 1',
+    conexao = await mysql.createConnection(config);
+    const [rows] = await conexao.execute(
+      'SELECT * FROM users WHERE matricula = ? AND senha = ?',
       [matricula, senha]
     );
 
     if (rows.length > 0) {
-      res.json({ success: true, message: '✅ Login bem-sucedido!' });
+      // Adicionamos o nome do usuário na resposta
+      return res.json({ 
+        message: 'Login bem-sucedido',
+        user: {
+          nome: rows[0].nome || 'Usuário', // assumindo que existe campo 'nome'
+          matricula: rows[0].matricula
+        }
+      });
     } else {
-      res.status(401).json({ success: false, message: '❌ Credenciais inválidas' });
+      return res.status(401).json({ message: 'Matrícula ou senha inválidos' });
     }
   } catch (err) {
-    console.error('Erro no servidor:', err);
-    res.status(500).json({ success: false, message: '🔥 Erro interno' });
+    return res.status(500).json({ message: 'Erro no servidor', error: err.message });
   } finally {
-    if (connection) await connection.end();
+    if (conexao) await conexao.end();
   }
 });
 
-// Rota raiz - Redireciona para /login
-app.get('/', (req, res) => {
-  res.redirect('/login');
+// Nova rota para dados do dashboard (simplificada)
+app.get('/dashboard-data', async (req, res) => {
+  let conexao;
+  try {
+    conexao = await mysql.createConnection(config);
+    // Exemplo: busca os últimos 5 registros de uma tabela
+    const [data] = await conexao.execute('SELECT * FROM sua_tabela LIMIT 5');
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ message: 'Erro ao buscar dados', error: err.message });
+  } finally {
+    if (conexao) await conexao.end();
+  }
 });
 
+// Inicia o servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`🔗 Acesse: https://insptxt-production.up.railway.app/login`);
 });
