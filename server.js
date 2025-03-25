@@ -1,10 +1,15 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
-const app = express();
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Config do banco
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); // Servir arquivos estáticos (HTML, CSS, JS)
+
+// Configuração do banco de dados
 const config = {
   host: process.env.MYSQL_HOST,
   port: process.env.MYSQL_PORT,
@@ -14,38 +19,39 @@ const config = {
   ssl: { rejectUnauthorized: false }
 };
 
-app.use(cors());
-app.use(express.json());
+// Rota principal (opcional, já serve index.html automaticamente)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
+// Rota de login
 app.post('/login', async (req, res) => {
   const { matricula, senha } = req.body;
-
   if (!matricula || !senha) {
-    return res.status(400).json({ message: 'Matrícula e senha são obrigatórias' });
+    return res.status(400).json({ message: 'Campos obrigatórios' });
   }
 
   let conexao;
   try {
     conexao = await mysql.createConnection(config);
-
     const [rows] = await conexao.execute(
       'SELECT * FROM users WHERE matricula = ? AND senha = ?',
       [matricula, senha]
     );
 
     if (rows.length > 0) {
-      return res.json({ message: 'Login bem-sucedido' });
+      res.json({ message: 'Login ok' });
     } else {
-      return res.status(401).json({ message: 'Matrícula ou senha inválidos' });
+      res.status(401).json({ message: 'Matrícula ou senha inválida' });
     }
   } catch (err) {
-    return res.status(500).json({ message: 'Erro no servidor', error: err.message });
+    res.status(500).json({ message: 'Erro no servidor', error: err.message });
   } finally {
     if (conexao) await conexao.end();
   }
 });
 
-// Inicia o servidor
+// Subir servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
