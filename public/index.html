@@ -1,59 +1,151 @@
-<script>
-  const form = document.getElementById('loginForm');
-  const messageDiv = document.getElementById('message');
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-container {
+      background-color: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 320px;
+      max-width: 90%;
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 1.5rem;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0 16px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    input:focus {
+      border-color: #4CAF50;
+      outline: none;
+    }
+    button {
+      width: 100%;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .message {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .loading {
+      color: #2196F3;
+    }
+    .success {
+      color: #4CAF50;
+      background-color: #e8f5e9;
+    }
+    .error {
+      color: #f44336;
+      background-color: #ffebee;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="text" name="matricula" placeholder="Matrícula" required />
+      <input type="password" name="senha" placeholder="Senha" required />
+      <button type="submit">Entrar</button>
+    </form>
+    <div class="message" id="message"></div>
+  </div>
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    messageDiv.textContent = 'Processando...';
-    messageDiv.style.color = 'blue';
+  <script>
+    const form = document.getElementById('loginForm');
+    const messageDiv = document.getElementById('message');
 
-    const formData = new FormData(form);
-    const data = {
-      matricula: formData.get('matricula'),
-      senha: formData.get('senha'),
-    };
+    // URL do seu backend no Railway - SUBSTITUA pela sua URL real
+    const BACKEND_URL = 'https://seu-projeto.up.railway.app';
 
-    try {
-      // Substitua pela URL real do seu backend no Railway
-      const backendUrl = 'https://seu-projeto.up.railway.app';
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
       
-      const res = await fetch(`${backendUrl}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-      });
+      // Mostrar estado de carregamento
+      messageDiv.textContent = 'Verificando credenciais...';
+      messageDiv.className = 'message loading';
 
-      const result = await res.json();
+      const formData = new FormData(form);
+      const data = {
+        matricula: formData.get('matricula'),
+        senha: formData.get('senha'),
+      };
 
-      if (res.ok) {
-        messageDiv.style.color = 'green';
-        messageDiv.textContent = result.message;
-      } else {
-        messageDiv.style.color = 'red';
-        messageDiv.textContent = result.message || 'Erro no login';
+      try {
+        const response = await fetch(`${BACKEND_URL}/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          messageDiv.textContent = result.message || 'Login realizado com sucesso!';
+          messageDiv.className = 'message success';
+          
+          // Redirecionar após login bem-sucedido (opcional)
+          setTimeout(() => {
+            window.location.href = '/dashboard.html'; // Altere para sua página de destino
+          }, 1500);
+        } else {
+          messageDiv.textContent = result.message || 'Erro no login. Verifique suas credenciais.';
+          messageDiv.className = 'message error';
+        }
+      } catch (error) {
+        console.error('Erro na requisição:', error);
+        messageDiv.textContent = 'Erro ao conectar com o servidor. Verifique sua conexão ou tente novamente mais tarde.';
+        messageDiv.className = 'message error';
       }
-    } catch (err) {
-      console.error('Erro:', err);
-      messageDiv.style.color = 'red';
-      messageDiv.textContent = 'Erro ao conectar com o servidor. Verifique o console para detalhes.';
-    }
-  });
+    });
 
-  // Teste de conexão inicial
-  async function testarConexao() {
-    try {
-      const backendUrl = 'https://seu-projeto.up.railway.app';
-      const res = await fetch(`${backendUrl}/health`);
-      if (res.ok) {
-        console.log('Conexão com o backend estabelecida!');
+    // Testar conexão com o backend ao carregar a página
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/health`);
+        if (!response.ok) {
+          console.warn('O backend parece estar offline ou com problemas');
+        }
+      } catch (error) {
+        console.error('Não foi possível conectar ao backend:', error);
       }
-    } catch (err) {
-      console.error('Falha ao conectar com o backend:', err);
-    }
-  }
-
-  // Executa o teste quando a página carrega
-  window.addEventListener('load', testarConexao);
-</script>
+    });
+  </script>
+</body>
+</html>
