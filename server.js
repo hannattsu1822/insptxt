@@ -1,53 +1,40 @@
 const express = require('express');
 const cors = require('cors');
-const app = express();
+const path = require('path');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Configuração do MySQL (usando sua URL do Railway)
+const app = express();
+
+// Configuração do MySQL
 const config = {
   uri: process.env.MYSQL_PUBLIC_URL,
   ssl: { rejectUnauthorized: false }
 };
 
-// Configuração do CORS (liberando acesso do frontend)
+// Middlewares
 app.use(cors({
   origin: ['https://insptxt-production.up.railway.app', 'http://localhost'],
   methods: ['GET', 'POST']
 }));
-
 app.use(express.json());
 
-// 👇 Rota raiz para evitar o erro "Cannot GET /"
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Backend Online</title>
-        <style>
-          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-          h1 { color: #4CAF50; }
-          a { color: #2196F3; text-decoration: none; }
-        </style>
-      </head>
-      <body>
-        <h1>🚀 Backend está online!</h1>
-        <p>Use o endpoint <code>/login</code> para autenticação.</p>
-        <p>Acesse o <a href="/login" target="_blank">Frontend de Login</a></p>
-      </body>
-    </html>
-  `);
+// 👇 Serve arquivos estáticos da pasta 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Rota GET /login - Serve o frontend
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Rota de login (POST)
+// Rota POST /login - Processa o login
 app.post('/login', async (req, res) => {
   const { matricula, senha } = req.body;
 
   if (!matricula || !senha) {
     return res.status(400).json({ 
       success: false,
-      message: '⚠️ Preencha matrícula e senha!' 
+      message: '⚠️ Preencha todos os campos' 
     });
   }
 
@@ -72,7 +59,13 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Rota raiz - Redireciona para /login
+app.get('/', (req, res) => {
+  res.redirect('/login');
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🔗 Acesse: https://insptxt-production.up.railway.app/login`);
 });
