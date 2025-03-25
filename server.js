@@ -1,58 +1,79 @@
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
+const app = express();
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Servir arquivos estáticos (HTML, CSS, JS)
-
-// Configuração do banco de dados
+// Nova configuração usando sua URL
 const config = {
-  host: process.env.MYSQL_HOST,
-  port: process.env.MYSQL_PORT,
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
+  uri: process.env.MYSQL_PUBLIC_URL,
   ssl: { rejectUnauthorized: false }
 };
 
-// Rota principal (opcional, já serve index.html automaticamente)
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Configuração robusta de CORS
+app.use(cors({
+  origin: '*', // Troque pelo seu domínio em produção
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 
-// Rota de login
+app.use(express.json());
+
+// Rota de login com melhor tratamento de erro
 app.post('/login', async (req, res) => {
+  console.log('Recebida requisição de login:', req.body);
+  
   const { matricula, senha } = req.body;
+  
   if (!matricula || !senha) {
-    return res.status(400).json({ message: 'Campos obrigatórios' });
+    return res.status(400).json({ 
+      success: false,
+      message: 'Matrícula e senha são obrigatórias' 
+    });
   }
 
-  let conexao;
+  let connection;
   try {
-    conexao = await mysql.createConnection(config);
-    const [rows] = await conexao.execute(
+    connection = await mysql.createConnection(config);
+    console.log('Conexão com MySQL estabelecida!');
+
+    const [rows] = await connection.execute(
       'SELECT * FROM users WHERE matricula = ? AND senha = ?',
       [matricula, senha]
     );
 
     if (rows.length > 0) {
-      res.json({ message: 'Login ok' });
+      console.log('Login bem-sucedido para matrícula:', matricula);
+      return res.json({ 
+        success: true,
+        message: 'Login bem-sucedido' 
+      });
     } else {
-      res.status(401).json({ message: 'Matrícula ou senha inválida' });
+      console.log('Credenciais inválidas para matrícula:', matricula);
+      return res.status(401).json({ 
+        success: false,
+        message: 'Matrícula ou senha inválidos' 
+      });
     }
   } catch (err) {
-    res.status(500).json({ message: 'Erro no servidor', error: err.message });
+    console.error('Erro no servidor:', err);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Erro no servidor',
+      error: err.message 
+    });
   } finally {
-    if (conexao) await conexao.end();
+    if (connection) await connection.end();
   }
 });
 
-// Subir servidor
+// Rota de saúde do servidor
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'online' });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🔗 URL do MySQL: ${process.env.MYSQL_PUBLIC_URL}`);
 });
