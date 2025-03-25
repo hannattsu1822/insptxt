@@ -4,39 +4,29 @@ const app = express();
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// Configuração do MySQL usando sua URL do Railway
 const config = {
-  uri: process.env.MYSQL_PUBLIC_URL,
+  uri: process.env.MYSQL_PUBLIC_URL || 'mysql://root:iQtgahZpQNuxJfCcCmCLcQMxfiLzyyfI@nozomi.proxy.rlwy.net:39585/railway',
   ssl: { rejectUnauthorized: false }
 };
 
+// Configuração de CORS para desenvolvimento/produção
 app.use(cors({
-  origin: '*',
+  origin: ['https://insptxt-production.up.railway.app', 'http://localhost'],
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  credentials: true
 }));
 
 app.use(express.json());
 
-// Rota raiz para verificar se o servidor está online
-app.get('/', (req, res) => {
-  res.status(200).json({ 
-    status: 'online',
-    message: 'Backend está funcionando!',
-    endpoints: {
-      login: 'POST /login',
-      health: 'GET /health'
-    }
-  });
-});
-
-// Rota de login
+// Rota de login - Versão simplificada e segura
 app.post('/login', async (req, res) => {
   const { matricula, senha } = req.body;
-  
+
   if (!matricula || !senha) {
     return res.status(400).json({ 
       success: false,
-      message: 'Matrícula e senha são obrigatórias' 
+      message: '⚠️ Preencha todos os campos' 
     });
   }
 
@@ -44,38 +34,33 @@ app.post('/login', async (req, res) => {
   try {
     connection = await mysql.createConnection(config);
     const [rows] = await connection.execute(
-      'SELECT * FROM users WHERE matricula = ? AND senha = ?',
+      'SELECT * FROM users WHERE matricula = ? AND senha = ? LIMIT 1',
       [matricula, senha]
     );
 
     if (rows.length > 0) {
       return res.json({ 
         success: true,
-        message: 'Login bem-sucedido' 
+        message: '✅ Login bem-sucedido!' 
       });
     } else {
       return res.status(401).json({ 
         success: false,
-        message: 'Matrícula ou senha inválidos' 
+        message: '❌ Matrícula ou senha incorretos' 
       });
     }
   } catch (err) {
-    console.error('Erro no login:', err);
+    console.error('Erro no servidor:', err);
     return res.status(500).json({ 
       success: false,
-      message: 'Erro no servidor',
-      error: err.message 
+      message: '🔥 Erro interno no servidor' 
     });
   } finally {
     if (connection) await connection.end();
   }
 });
 
-// Rota de saúde do servidor
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'online' });
-});
-
+// Inicia o servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
