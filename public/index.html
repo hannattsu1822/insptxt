@@ -1,56 +1,59 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
-</head>
-<body>
-  <h1>Login</h1>
-  <form id="login-form">
-    <div>
-      <label for="matricula">Matrícula:</label>
-      <input type="text" id="matricula" name="matricula" required>
-    </div>
-    <div>
-      <label for="senha">Senha:</label>
-      <input type="password" id="senha" name="senha" required>
-    </div>
-    <button type="submit">Entrar</button>
-  </form>
+<script>
+  const form = document.getElementById('loginForm');
+  const messageDiv = document.getElementById('message');
 
-  <p id="error-message" style="color: red;"></p>
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    messageDiv.textContent = 'Processando...';
+    messageDiv.style.color = 'blue';
 
-  <script>
-    document.getElementById('login-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
+    const formData = new FormData(form);
+    const data = {
+      matricula: formData.get('matricula'),
+      senha: formData.get('senha'),
+    };
 
-      // Coleta os valores do formulário
-      const matricula = document.getElementById('matricula').value;
-      const senha = document.getElementById('senha').value;
+    try {
+      // Substitua pela URL real do seu backend no Railway
+      const backendUrl = 'https://seu-projeto.up.railway.app';
+      
+      const res = await fetch(`${backendUrl}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
 
-      try {
-        // Envia os dados para a API de login
-        const res = await fetch('mysql://root:iQtgahZpQNuxJfCcCmCLcQMxfiLzyyfI@nozomi.proxy.rlwy.net:39585/railway', {  // Atualize a URL com a do seu backend
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matricula, senha })
-        });
+      const result = await res.json();
 
-        const data = await res.json();
-
-        // Se o login for bem-sucedido
-        if (res.ok) {
-          alert(data.message);  // Exibe mensagem de sucesso (ou o que você quiser fazer com o login)
-        } else {
-          // Se falhar, exibe a mensagem de erro
-          document.getElementById('error-message').textContent = data.message;
-        }
-      } catch (error) {
-        console.error('Erro ao conectar com o servidor:', error);
-        document.getElementById('error-message').textContent = 'Erro ao conectar com o servidor.';
+      if (res.ok) {
+        messageDiv.style.color = 'green';
+        messageDiv.textContent = result.message;
+      } else {
+        messageDiv.style.color = 'red';
+        messageDiv.textContent = result.message || 'Erro no login';
       }
-    });
-  </script>
-</body>
-</html>
+    } catch (err) {
+      console.error('Erro:', err);
+      messageDiv.style.color = 'red';
+      messageDiv.textContent = 'Erro ao conectar com o servidor. Verifique o console para detalhes.';
+    }
+  });
+
+  // Teste de conexão inicial
+  async function testarConexao() {
+    try {
+      const backendUrl = 'https://seu-projeto.up.railway.app';
+      const res = await fetch(`${backendUrl}/health`);
+      if (res.ok) {
+        console.log('Conexão com o backend estabelecida!');
+      }
+    } catch (err) {
+      console.error('Falha ao conectar com o backend:', err);
+    }
+  }
+
+  // Executa o teste quando a página carrega
+  window.addEventListener('load', testarConexao);
+</script>
